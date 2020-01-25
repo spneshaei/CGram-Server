@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		421973DD23BF30950042C926 /* cJSON_Utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 421973DA23BF30950042C926 /* cJSON_Utils.c */; };
+		421973DE23BF30950042C926 /* cJSON.c in Sources */ = {isa = PBXBuildFile; fileRef = 421973DC23BF30950042C926 /* cJSON.c */; };
 		421FEC2423ACD6A60070A6C5 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 421FEC2323ACD6A60070A6C5 /* main.c */; };
 /* End PBXBuildFile section */
 
@@ -23,6 +25,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		421973D923BF30950042C926 /* cJSON.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cJSON.h; sourceTree = "<group>"; };
+		421973DA23BF30950042C926 /* cJSON_Utils.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = cJSON_Utils.c; sourceTree = "<group>"; };
+		421973DB23BF30950042C926 /* cJSON_Utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cJSON_Utils.h; sourceTree = "<group>"; };
+		421973DC23BF30950042C926 /* cJSON.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = cJSON.c; sourceTree = "<group>"; };
 		421FEC2023ACD6A60070A6C5 /* CGramServer */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = CGramServer; sourceTree = BUILT_PRODUCTS_DIR; };
 		421FEC2323ACD6A60070A6C5 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -57,6 +63,10 @@
 		421FEC2223ACD6A60070A6C5 /* CGramServer */ = {
 			isa = PBXGroup;
 			children = (
+				421973DA23BF30950042C926 /* cJSON_Utils.c */,
+				421973DB23BF30950042C926 /* cJSON_Utils.h */,
+				421973DC23BF30950042C926 /* cJSON.c */,
+				421973D923BF30950042C926 /* cJSON.h */,
 				421FEC2323ACD6A60070A6C5 /* main.c */,
 			);
 			path = CGramServer;
@@ -118,7 +128,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				421973DE23BF30950042C926 /* cJSON.c in Sources */,
 				421FEC2423ACD6A60070A6C5 /* main.c in Sources */,
+				421973DD23BF30950042C926 /* cJSON_Utils.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
