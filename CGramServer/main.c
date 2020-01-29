@@ -6,7 +6,9 @@
 //  Copyright © 2019 Seyyed Parsa Neshaei. All rights reserved.
 //
 
+#include <sys/ioctl.h>
 #include <stdio.h>
+#include <termios.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,8 +27,14 @@ typedef struct User {
     char currentChannel[1000];
 } User;
 
+static struct termios term, oterm;
+
+static int getch(void);
+
 User allUsers[MAX];
 int currentAllUsersIndex = 0;
+
+char asciiArt[5][200];
 
 void splitString(char str[1000000], char newString[1000][1000], int *countOfWords) {
     int j = 0, count = 0;
@@ -104,6 +112,28 @@ int userHasGivenPasswordInJSON(char *user, char *pass, cJSON *root) {
     return 0;
 }
 
+int memberExistsInJSON(char *theMemberName, cJSON *root, int shouldCountMinusOnes) {
+    cJSON *members = cJSON_GetObjectItemCaseSensitive(root, "members");
+    cJSON *member = NULL;
+    cJSON_ArrayForEach(member, members) {
+        cJSON *memberName = cJSON_GetObjectItemCaseSensitive(member, "name");
+        cJSON *hasSeen = cJSON_GetObjectItemCaseSensitive(member, "hasSeen");
+        if (!memberName || !hasSeen) continue;
+        if (cJSON_IsString(memberName)) {
+            if (shouldCountMinusOnes) {
+                if (memberName -> valuestring && strcmp(memberName -> valuestring, theMemberName) == 0) {
+                    return 1;
+                }
+            } else {
+                if (memberName -> valuestring && strcmp(memberName -> valuestring, theMemberName) == 0 && hasSeen->valueint != -1) {
+                    return 1;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
 int channelExitsInJSON(char *channelName, cJSON *root) {
     cJSON *channels = cJSON_GetObjectItemCaseSensitive(root, "channels");
     cJSON *channelJSON = NULL;
@@ -145,12 +175,12 @@ void doLogin(char *username, char *password, char *result) {
     char data[100000] = {}, fileName[] = "users.txt";
     readFromFile(fileName, data);
     if (strcmp(data, "") == 0) {
-        strcpy(result, "{\"type\":\"Error\",\"content\":\"this username is not available.\"}");
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Username is not valid.\"}");
         return;
     }
     cJSON *root = cJSON_Parse(data);
     if (root == NULL) {
-        strcpy(result, "{\"type\":\"Error\",\"content\":\"this username is not available.\"}");
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Username is not valid.\"}");
         return;
     }
     if (!userExitsInJSON(username, root)) {
@@ -233,18 +263,18 @@ void doCreateChannel(char *channelName, char *token, char *result) {
     if (strcmp(data, "") == 0) {
         strcat(data, "{\"channels\": [{ \"name\": \"");
         strcat(data, channelName);
-        strcat(data, "\", \"members\": [\"");
+        strcat(data, "\", \"members\": [{\"name\":\"");
         strcat(data, allUsers[id].username);
-        strcat(data, "\"], \"messages\": []}]}");
+        strcat(data, "\", \"hasSeen\": 0}], \"messages\": []}]}");
         if (id == -1) {
             // TODO: Error message wrong
             strcpy(result, "{\"type\":\"Error\",\"content\":\"Channel name is not available.\"}");
             return;
         }
-        if (strcmp(allUsers[id].currentChannel, "") != 0) {
-            strcpy(result, "{\"type\":\"Error\",\"content\":\"You are in another channel.\"}");
-            return;
-        }
+//        if (strcmp(allUsers[id].currentChannel, "") != 0) {
+//            strcpy(result, "{\"type\":\"Error\",\"content\":\"You are in another channel.\"}");
+//            return;
+//        }
         strcpy(allUsers[id].currentChannel, channelName);
         writeToFile(fileName, data);
         strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
@@ -255,18 +285,18 @@ void doCreateChannel(char *channelName, char *token, char *result) {
     if (root == NULL) {
         strcat(data, "{\"channels\": [{ \"name\": \"");
         strcat(data, channelName);
-        strcat(data, "\", \"members\": [\"");
+        strcat(data, "\", \"members\": [{\"name\":\"");
         strcat(data, allUsers[id].username);
-        strcat(data, "\"], \"messages\": []}]}");
+        strcat(data, "\", \"hasSeen\": 0}], \"messages\": []}]}");
         if (id == -1) {
             // TODO: Error message wrong
             strcpy(result, "{\"type\":\"Error\",\"content\":\"Channel name is not available.\"}");
             return;
         }
-        if (strcmp(allUsers[id].currentChannel, "") != 0) {
-            strcpy(result, "{\"type\":\"Error\",\"content\":\"You are in another channel.\"}");
-            return;
-        }
+//        if (strcmp(allUsers[id].currentChannel, "") != 0) {
+//            strcpy(result, "{\"type\":\"Error\",\"content\":\"You are in another channel.\"}");
+//            return;
+//        }
         strcpy(allUsers[id].currentChannel, channelName);
         writeToFile(fileName, data);
         strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
@@ -281,14 +311,17 @@ void doCreateChannel(char *channelName, char *token, char *result) {
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Channel name is not available.\"}");
         return;
     }
-    if (strcmp(allUsers[id].currentChannel, "") != 0) {
-        strcpy(result, "{\"type\":\"Error\",\"content\":\"You are in another channel.\"}");
-        return;
-    }
+//    if (strcmp(allUsers[id].currentChannel, "") != 0) {
+//        strcpy(result, "{\"type\":\"Error\",\"content\":\"You are in another channel.\"}");
+//        return;
+//    }
+    strcpy(allUsers[id].currentChannel, channelName);
     cJSON *channels = cJSON_GetObjectItemCaseSensitive(root, "channels");
     cJSON *channel = cJSON_CreateObject();
     cJSON *members = cJSON_CreateArray();
-    cJSON *member = cJSON_CreateString(allUsers[id].username);
+    cJSON *member = cJSON_CreateObject();
+    cJSON_AddStringToObject(member, "name", allUsers[id].username);
+    cJSON_AddNumberToObject(member, "hasSeen", 0);
     cJSON *messages = cJSON_CreateArray();
     cJSON *name = cJSON_CreateString(channelName);
     cJSON_AddItemToArray(members, member);
@@ -308,10 +341,10 @@ void doLeave(char *token, char *result) {
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
         return;
     }
-    if (strcmp(allUsers[id].currentChannel, "") == 0) {
-        strcpy(result, "{\"type\":\"Error\",\"content\":\"You aren\'t in any channel\"}");
-        return;
-    }
+//    if (strcmp(allUsers[id].currentChannel, "") == 0) {
+//        strcpy(result, "{\"type\":\"Error\",\"content\":\"You aren\'t in any channel\"}");
+//        return;
+//    }
     char data[MAX] = {}, fileName[] = "channels.txt";
     readFromFile(fileName, data);
     cJSON *root = cJSON_Parse(data);
@@ -328,12 +361,16 @@ void doLeave(char *token, char *result) {
         cJSON *name = cJSON_GetObjectItemCaseSensitive(channel, "name");
         if (name->valuestring && (strcmp(name->valuestring, channelName) == 0)) {
             cJSON *members = cJSON_GetObjectItemCaseSensitive(channel, "members");
-            cJSON *member = NULL;
-            cJSON_ArrayForEach(member, members) {
+            cJSON *memberr = NULL;
+            cJSON_ArrayForEach(memberr, members) {
+                cJSON *member = cJSON_GetObjectItemCaseSensitive(memberr, "name");
+                if (!member) continue;
                 if (member->valuestring && strcmp(member->valuestring, allUsers[id].username) == 0) {
-                    cJSON_Delete(member);
+                    cJSON *hasSeen = cJSON_GetObjectItemCaseSensitive(memberr, "hasSeen");
+                    cJSON_SetIntValue(hasSeen, -1);
                     strcpy(data, cJSON_Print(root));
                     writeToFile(fileName, data);
+                    strcpy(allUsers[id].currentChannel, "");
                     strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
                     return;
                 }
@@ -352,10 +389,10 @@ void doJoinChannel(char *channelName, char *token, char *result) {
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
         return;
     }
-    if (strcmp(allUsers[id].currentChannel, "") != 0) {
-        strcpy(result, "{\"type\":\"Error\",\"content\":\"You are in another channel.\"}");
-        return;
-    }
+//    if (strcmp(allUsers[id].currentChannel, "") != 0) {
+//        strcpy(result, "{\"type\":\"Error\",\"content\":\"You are in another channel.\"}");
+//        return;
+//    }
     char data[MAX] = {}, fileName[] = "channels.txt";
     readFromFile(fileName, data);
     cJSON *root = cJSON_Parse(data);
@@ -364,23 +401,80 @@ void doJoinChannel(char *channelName, char *token, char *result) {
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
         return;
     }
+    strcpy(allUsers[id].currentChannel, channelName);
     cJSON *channels = cJSON_GetObjectItemCaseSensitive(root, "channels");
     cJSON *channel = NULL;
     cJSON_ArrayForEach(channel, channels) {
         cJSON *name = cJSON_GetObjectItemCaseSensitive(channel, "name");
         if (name->valuestring && (strcmp(name->valuestring, channelName) == 0)) {
-            cJSON *members = cJSON_GetObjectItemCaseSensitive(channel, "members");
-            cJSON *member = cJSON_CreateString(allUsers[id].username);
-            cJSON_AddItemToArray(members, member);
-            strcpy(allUsers[id].currentChannel, channelName);
-            strcpy(data, cJSON_Print(root));
-            writeToFile(fileName, data);
+            if (!memberExistsInJSON(allUsers[id].username, channel, 1)) {
+                cJSON *members = cJSON_GetObjectItemCaseSensitive(channel, "members");
+//                cJSON *member = cJSON_CreateString(allUsers[id].username);
+                cJSON *member = cJSON_CreateObject();
+                cJSON_AddStringToObject(member, "name", allUsers[id].username);
+                cJSON_AddNumberToObject(member, "hasSeen", 0);
+                cJSON_AddItemToArray(members, member);
+                strcpy(allUsers[id].currentChannel, channelName);
+                strcpy(data, cJSON_Print(root));
+                writeToFile(fileName, data);
+                strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
+                return;
+            } else {
+                cJSON *members = cJSON_GetObjectItemCaseSensitive(channel, "members");
+                cJSON *member = NULL;
+                cJSON_ArrayForEach(member, members) {
+                    cJSON *memberName = cJSON_GetObjectItemCaseSensitive(member, "name");
+                    if (memberName && cJSON_IsString(memberName) && (strcmp(memberName->valuestring, allUsers[id].username) == 0)) {
+                        cJSON *memberHasSeen = cJSON_GetObjectItemCaseSensitive(member, "hasSeen");
+                        if (memberHasSeen) {
+                            cJSON_SetIntValue(memberHasSeen, 0);
+                            strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
+                            return;
+                        }
+                    }
+                }
+            }
             strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
             return;
         }
     }
     strcpy(result, "{\"type\":\"Error\",\"content\":\"Channel not found.\"}");
 }
+
+int hasSeenOfMemberGiven(char *theMemberName, cJSON *members) {
+    cJSON *member = NULL;
+    cJSON_ArrayForEach(member, members) {
+        cJSON *memberName = cJSON_GetObjectItemCaseSensitive(member, "name");
+        if (!memberName) {
+            continue;
+        }
+        if (memberName->valuestring && (strcmp(memberName->valuestring, theMemberName) == 0)) {
+            cJSON *memberHasSeen = cJSON_GetObjectItemCaseSensitive(member, "hasSeen");
+            if (memberHasSeen && cJSON_IsNumber(memberHasSeen)) {
+                return memberHasSeen->valueint;
+            }
+        }
+    }
+    return 0;
+}
+
+void setHasSeenOfMemberGiven(int num, char *theMemberName, cJSON *members) {
+    cJSON *member = NULL;
+    cJSON_ArrayForEach(member, members) {
+        cJSON *memberName = cJSON_GetObjectItemCaseSensitive(member, "name");
+        if (!memberName) {
+            continue;
+        }
+        if (memberName->valuestring && (strcmp(memberName->valuestring, theMemberName) == 0)) {
+            cJSON *memberHasSeen = cJSON_GetObjectItemCaseSensitive(member, "hasSeen");
+            if (memberHasSeen && cJSON_IsNumber(memberHasSeen)) {
+                cJSON_SetIntValue(memberHasSeen, num);
+            }
+        }
+    }
+}
+
+int tMC = 0;
 
 void doRefresh(char *token, char *result) {
     int id = userIDHavingGivenToken(token);
@@ -389,10 +483,10 @@ void doRefresh(char *token, char *result) {
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
         return;
     }
-    if (strcmp(allUsers[id].currentChannel, "") == 0) {
-        strcpy(result, "{\"type\":\"Error\",\"content\":\"You aren\'t in any channel\"}");
-        return;
-    }
+//    if (strcmp(allUsers[id].currentChannel, "") == 0) {
+//        strcpy(result, "{\"type\":\"Error\",\"content\":\"You aren\'t in any channel\"}");
+//        return;
+//    }
     char data[MAX] = {}, fileName[] = "channels.txt";
     readFromFile(fileName, data);
     cJSON *root = cJSON_Parse(data);
@@ -407,12 +501,23 @@ void doRefresh(char *token, char *result) {
     cJSON *channel = NULL;
     cJSON_ArrayForEach(channel, channels) {
         cJSON *name = cJSON_GetObjectItemCaseSensitive(channel, "name");
+        cJSON *membersJSON = cJSON_GetObjectItemCaseSensitive(channel, "members");
+        if (!membersJSON) {
+            continue;
+        }
         if (name->valuestring && (strcmp(name->valuestring, channelName) == 0)) {
             strcpy(result, "{\"type\":\"List\",\"content\":[");
+            int hasSeen = hasSeenOfMemberGiven(allUsers[id].username, membersJSON);
             cJSON *messages = cJSON_GetObjectItemCaseSensitive(channel, "messages");
             cJSON *message = NULL;
-            int isFirstTime = 1;
+            int isFirstTime = 1, i = 0, totalMessagesCount = 0;
             cJSON_ArrayForEach(message, messages) {
+                // TODO: Here
+//                if (i < hasSeen) {
+//                    i++;
+//                    continue;
+//                }
+                totalMessagesCount++;
                 if (isFirstTime) {
                     isFirstTime = 0;
                 } else {
@@ -426,7 +531,15 @@ void doRefresh(char *token, char *result) {
                 strcat(result, content->valuestring);
                 strcat(result, "\"}");
             }
+            if (tMC == 0) {
+                tMC = totalMessagesCount;
+            } else {
+                tMC++;
+            }
             strcat(result, "]}");
+            setHasSeenOfMemberGiven(totalMessagesCount, allUsers[id].username, membersJSON);
+            strcpy(data, cJSON_Print(root));
+            writeToFile(fileName, data);
             return;
         }
     }
@@ -440,11 +553,11 @@ void doSend(char *originalMessage, char *token, char *result) {
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
         return;
     }
-    if (strcmp(allUsers[id].currentChannel, "") == 0) {
-        // TODO: Study \' or ' (also using replace and find in other places...)
-        strcpy(result, "{\"type\":\"Error\",\"content\":\"You aren\'t in any channel\"}");
-        return;
-    }
+//    if (strcmp(allUsers[id].currentChannel, "") == 0) {
+//        // TODO: Study \' or ' (also using replace and find in other places...)
+//        strcpy(result, "{\"type\":\"Error\",\"content\":\"You aren\'t in any channel\"}");
+//        return;
+//    }
     char data[MAX] = {}, fileName[] = "channels.txt";
     readFromFile(fileName, data);
     cJSON *root = cJSON_Parse(data);
@@ -484,10 +597,10 @@ void doChannelMembers(char *token, char *result) {
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
         return;
     }
-    if (strcmp(allUsers[id].currentChannel, "") == 0) {
-        strcpy(result, "{\"type\":\"Error\",\"content\":\"You aren\'t in any channel\"}");
-        return;
-    }
+//    if (strcmp(allUsers[id].currentChannel, "") == 0) {
+//        strcpy(result, "{\"type\":\"Error\",\"content\":\"You aren\'t in any channel\"}");
+//        return;
+//    }
     char data[MAX] = {}, fileName[] = "channels.txt";
     readFromFile(fileName, data);
     cJSON *root = cJSON_Parse(data);
@@ -508,13 +621,18 @@ void doChannelMembers(char *token, char *result) {
             cJSON *member = NULL;
             int isFirstTime = 1;
             cJSON_ArrayForEach(member, members) {
+                cJSON *memberN = cJSON_GetObjectItemCaseSensitive(member, "name");
+                cJSON *hasSeenN = cJSON_GetObjectItemCaseSensitive(member, "hasSeen");
+                if (!memberN || !hasSeenN || (hasSeenN->valueint == -1)) {
+                    continue;
+                }
                 if (isFirstTime) {
                     isFirstTime = 0;
                 } else {
                     strcat(result, ",");
                 }
                 strcat(result, "\"");
-                strcat(result, member->valuestring);
+                strcat(result, memberN->valuestring);
                 strcat(result, "\"");
             }
             strcat(result, "]}");
@@ -541,8 +659,7 @@ void process(char *request) {
     strcpy(firstPart, parts[0]);
     strcpy(secondPart, parts[1]);
     if (strcmp(firstPart, "") != 0) {
-        printf(firstPart);
-        printf("\n");
+        printf("Server received a '%s' type of request from the client\n", firstPart);
     }
     
     
@@ -567,6 +684,9 @@ void process(char *request) {
     } else {
         badRequest(request);
     }
+    
+    printf("Server sent the result '%s' to the client\n", request);
+    
 }
 
 void chat(int client_socket, int server_socket)
@@ -640,7 +760,7 @@ void connectServer() {
 //        exit(0);
     }
     else
-        printf("Socket successfully created..\n");
+        printf("Server socket successfully created\n");
         ;
     bzero(&server, sizeof(server));
     server.sin_family = AF_INET;
@@ -652,7 +772,7 @@ void connectServer() {
 //        exit(0);
     }
     else
-        printf("Socket successfully bound..\n");
+        printf("Socket successfully bound\n");
     
     if ((listen(server_socket, 5)) != 0) {
         printf("Listen failed...\n");
@@ -660,18 +780,18 @@ void connectServer() {
 //        exit(0);
     }
     else
-        printf("Server listening..\n");
+        printf("Server listening to client requests on port %d\n", PORT);
     
     while (1) {
         socklen_t len = sizeof(client);
         client_socket = accept(server_socket, (SA*)&client, &len);
         if (client_socket < 0) {
-            printf("Server accceptance failed...\n");
+            printf("Server accceptance failed or breakpoint set\n");
             // TODO: Maintanance
             //        exit(0);
         }
         else
-            printf("Server acccepted the client..\n");
+            printf("Server acccepted a request from the client\n");
         
 //        chat(client_socket, server_socket);
         
@@ -687,8 +807,130 @@ void connectServer() {
 //    shutdown(server_socket, SHUT_RDWR);
 }
 
+void initializeAsciiArt() {
+    strcpy(asciiArt[0], " ______     ______     ______     ______     __    __    \n");
+    strcpy(asciiArt[1], "/\\  ___\\   /\\  ___\\   /\\  == \\   /\\  __ \\   /\\ \"-./  \\   \n");
+    strcpy(asciiArt[2], "\\ \\ \\____  \\ \\ \\__ \\  \\ \\  __<   \\ \\  __ \\  \\ \\ \\-./\\ \\  \n");
+    strcpy(asciiArt[3], " \\ \\_____\\  \\ \\_____\\  \\ \\_\\ \\_\\  \\ \\_\\ \\_\\  \\ \\_\\ \\ \\_\\ \n");
+    strcpy(asciiArt[4], "  \\/_____/   \\/_____/   \\/_/ /_/   \\/_/\\/_/   \\/_/  \\/_/ \n");
+}
+
+enum Colors { RED = 35, GREEN = 32, YELLOW = 33, BLUE = 34, CYAN = 36 } appColor = RED;
+
+void makeBoldColor() {
+    char x[100] = {'\0'};
+    sprintf(x, "\033[1;%dm", appColor);
+    printf("%s", x);
+}
+
+void makeColor() {
+    char x[100] = {'\0'};
+    sprintf(x, "\033[0;%dm", appColor);
+    printf("%s", x);
+}
+
+void resetFont() {
+    printf("\x1b[0m");
+}
+
+static int getch() {
+    int c = 0;
+    
+    tcgetattr(0, &oterm);
+    memcpy(&term, &oterm, sizeof(term));
+    term.c_lflag &= ~(ICANON | ECHO);
+    term.c_cc[VMIN] = 1;
+    term.c_cc[VTIME] = 0;
+    tcsetattr(0, TCSANOW, &term);
+    c = getchar();
+    tcsetattr(0, TCSANOW, &oterm);
+    if (c == 27) {
+        resetFont();
+        exit(0);
+    }
+    return c;
+}
+
+int terminalColumns = 80, terminalLines = 24;
+
+void setupTerminalDimensions() {
+#ifdef TIOCGSIZE
+    struct ttysize ts;
+    ioctl(STDIN_FILENO, TIOCGSIZE, &ts);
+    terminalColumns = ts.ts_cols;
+    terminalLines = ts.ts_lines;
+#elif defined(TIOCGWINSZ)
+    struct winsize ts;
+    ioctl(STDIN_FILENO, TIOCGWINSZ, &ts);
+    terminalColumns = ts.ws_col;
+    terminalLines = ts.ws_row;
+#endif
+}
+
+void printStringCentered(char *str) {
+    int long len = strlen(str);//unicodeStrlen(str);
+    int width = (int)(len + (terminalColumns - len) / 2);
+    printf("%*s", width, str);
+}
+
 int main(int argc, const char * argv[]) {
     srand((unsigned int) time(NULL));
+    initializeAsciiArt();
+    switch (argc) {
+        case 0:
+        case 1:
+            system("clear");
+            printf("\n");
+            makeBoldColor();
+            for (int i = 0; i < 5; i++) {
+                printf("%s", asciiArt[i]);
+            }
+            printf("\n\n\n");
+            printStringCentered("CGram Server v1.0");
+            printf("\n\n\n");
+            printStringCentered("This server is designed to work alongside CGram v2.0 on macOS systems.");
+            printf("\n\n");
+            printStringCentered("To reset all of the users and channels\' data on the server,");
+            printf("\n");
+            printStringCentered("simply pass \'--reset\' while opening CGram Server using Terminal.");
+            printf("\n\n\n");
+            resetFont();
+            connectServer();
+            break;
+            
+        case 2:
+            if (strcmp(argv[1], "--reset") == 0) {
+                makeBoldColor();
+                printf("\n\n");
+                printStringCentered("Are you sure you want to reset all the data on the server?");
+                printf("\n");
+                printStringCentered("If yes, press 'y', and if not, press 'n'.");
+                resetFont();
+                while (1) {
+                    char c = getch();
+                    switch (c) {
+                        case 'y':
+                        case 'Y':
+                            remove("channels.txt");
+                            remove("users.txt");
+                            printf("\n\n");
+                            makeBoldColor();
+                            printStringCentered("\n\nReset all data done. Press any key to return.\n\n");
+                            resetFont();
+                            break;
+                        case 'n':
+                        case 'N':
+                            return 0;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+            break;
+        default:
+            break;
+    }
     
 //    while (1) {
 //        char str[10000];
@@ -698,7 +940,7 @@ int main(int argc, const char * argv[]) {
 //    }
     
 //    while (1) {
-        connectServer();
+    
 //        sleep(500);
 //    }
     
