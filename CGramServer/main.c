@@ -904,7 +904,7 @@ int main(int argc, const char * argv[]) {
                 printf("\n\n");
                 printStringCentered("Are you sure you want to reset all the data on the server?");
                 printf("\n");
-                printStringCentered("If yes, press 'y', and if not, press 'n'.");
+                printStringCentered("If yes, press 'y', and if not, press 'n'.\n\n");
                 resetFont();
                 while (1) {
                     char c = getch();
@@ -915,11 +915,15 @@ int main(int argc, const char * argv[]) {
                             remove("users.txt");
                             printf("\n\n");
                             makeBoldColor();
-                            printStringCentered("\n\nReset all data done. Press any key to return.\n\n");
+                            printStringCentered("Reset all data done. Press any key to return.");
+                            printf("\n\n\n");
                             resetFont();
+                            getch();
+                            return 0;
                             break;
                         case 'n':
                         case 'N':
+                            printf("\n");
                             return 0;
                             break;
                         default:
