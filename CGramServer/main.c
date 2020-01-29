@@ -36,6 +36,21 @@ int currentAllUsersIndex = 0;
 
 char asciiArt[5][200];
 
+void splitStringWithoutSpace(char str[1000000], char newString[1000][1000], int *countOfWords) {
+    int j = 0, count = 0;
+    for(int i = 0; i <= strlen(str); i++) {
+        if (str[i] == '\0' || str[i] == ',' || str[i] == '\n') {
+            newString[count][j] = '\0';
+            count += 1;
+            j = 0;
+        } else {
+            newString[count][j] = str[i];
+            j++;
+        }
+    }
+    *countOfWords = count;
+}
+
 void splitString(char str[1000000], char newString[1000][1000], int *countOfWords) {
     int j = 0, count = 0;
     for(int i = 0; i <= strlen(str); i++) {
@@ -677,8 +692,18 @@ void process(char *request) {
         doJoinChannel(parts[2], parts[4], request);
     } else if (strcmp(firstPart, "refresh") == 0) {
         doRefresh(secondPart, request);
-    } else if (strcmp(firstPart, "send") == 0) { // TODO: Bug: Comma and Space in message not fixed!!
-        doSend(secondPart, parts[3], request);
+    } else if (strcmp(firstPart, "send") == 0) {
+//        doSend(secondPart, parts[3], request);
+        char newParts[1000][1000] = {};
+        int dummy = 0;
+        splitStringWithoutSpace(request, newParts, &dummy);
+        char ourStrWithSendWord[1000] = {};
+        strcpy(ourStrWithSendWord, newParts[0]);
+        unsigned long len = strlen(ourStrWithSendWord);
+        for (int i = 0; i < len; i++) {
+            ourStrWithSendWord[i] = ourStrWithSendWord[i + 5];
+        }
+        doSend(ourStrWithSendWord, parts[countOfParts - 2], request);
     } else if (strcmp(firstPart, "channel") == 0 && strcmp(secondPart, "members") == 0) {
         doChannelMembers(parts[2], request);
     } else {
