@@ -36,6 +36,24 @@ int currentAllUsersIndex = 0;
 
 char asciiArt[5][200];
 
+void occurences(char *str, char *toSearch, int *numberOfOccurences, int occurencesArr[500]) {
+    *numberOfOccurences = 0;
+    unsigned long stringLen = strlen(str), searchLen = strlen(toSearch);
+    for (int i = 0; i <= stringLen - searchLen; i++) {
+        int found = 1;
+        for (int j = 0; j < searchLen; j++) {
+            if (str[i + j] != toSearch[j]) {
+                found = 0;
+                break;
+            }
+        }
+        if (found) {
+            occurencesArr[*numberOfOccurences] = i;
+            (*numberOfOccurences)++;
+        }
+    }
+}
+
 void splitStringWithoutSpace(char str[1000000], char newString[1000][1000], int *countOfWords) {
     int j = 0, count = 0;
     for(int i = 0; i <= strlen(str); i++) {
@@ -105,11 +123,28 @@ void generateToken(char *token, int size) {
     }
 }
 
+void findSubstring(char *destination, const char *source, int beg, int n)
+{
+    // extracts n characters from source string starting from beg index
+    // and copy them into the destination string
+    while (n > 0)
+    {
+        *destination = *(source + beg);
+        
+        destination++;
+        source++;
+        n--;
+    }
+    
+    // null terminate destination string
+    *destination = '\0';
+}
+
 void badRequest(char *result) {
     strcpy(result, "{\"type\":\"Error\",\"content\":\"Invalid request format.\"}");
 }
 
-int userHasGivenPasswordInJSON(char *user, char *pass, cJSON *root) {
+int userHasGivenPasswordInJSON_cJSON(char *user, char *pass, cJSON *root) {
     cJSON *users = cJSON_GetObjectItemCaseSensitive(root, "users");
     cJSON *userJSON = NULL;
     cJSON_ArrayForEach(userJSON, users) {
@@ -127,7 +162,40 @@ int userHasGivenPasswordInJSON(char *user, char *pass, cJSON *root) {
     return 0;
 }
 
-int memberExistsInJSON(char *theMemberName, cJSON *root, int shouldCountMinusOnes) {
+int userHasGivenPasswordInJSON(char *user, char *pass, char *root) {
+    char toSearch[200] = {};
+    strcpy(toSearch, "\"username\":\t\"");
+    strcat(toSearch, user);
+    strcat(toSearch, "\",");
+    int numberOfOccurences = -1;
+    int occurencesArr[1000] = {};
+    occurences(root, toSearch, &numberOfOccurences, occurencesArr);
+    if (numberOfOccurences < 1) {
+        return 0;
+    }
+    unsigned long startPosition = occurencesArr[0] + 32 + strlen(user);
+    const int rootPassSize = 500;
+    char rootPass[rootPassSize] = {};
+    int i = 0;
+    while (1) {
+        if (i >= rootPassSize) {
+            return 0;
+        }
+        if (root[startPosition + i] == '\"' || root[startPosition + i] == '\"') {
+            break;
+        }
+        rootPass[i] = root[startPosition + i];
+        i++;
+    }
+    rootPass[i] = '\0';
+    if (strcmp(rootPass, pass) == 0) {
+        return 1;
+    }
+    return 0;
+}
+
+
+int memberExistsInJSON_cJSON(char *theMemberName, cJSON *root, int shouldCountMinusOnes) {
     cJSON *members = cJSON_GetObjectItemCaseSensitive(root, "members");
     cJSON *member = NULL;
     cJSON_ArrayForEach(member, members) {
@@ -149,7 +217,39 @@ int memberExistsInJSON(char *theMemberName, cJSON *root, int shouldCountMinusOne
     return 0;
 }
 
-int channelExitsInJSON(char *channelName, cJSON *root) {
+// Assumes name of users and channels are different
+
+int memberExistsInJSON(char *theMemberName, char *channelName, char *root, int shouldCountMinusOnes) {
+    char string[MAX] = {};
+    strcpy(string, root);
+    char toSearch[200] = {};
+    strcpy(toSearch, "\"name\":\t\"");
+    strcat(toSearch, channelName);
+    strcat(toSearch, "\",");
+    int numberOfOccurences = -1;
+    int occurencesArr[1000] = {};
+    occurences(string, toSearch, &numberOfOccurences, occurencesArr);
+    if (numberOfOccurences < 1) {
+        return 0;
+    }
+    int cutPos = occurencesArr[0] + 5;
+    char substring[1000] = {};
+    findSubstring(substring, string, cutPos, (int)(strlen(string) - cutPos));
+    strcpy(string, substring);
+    strcpy(toSearch, "\"name\":\t\"");
+    strcat(toSearch, theMemberName);
+    occurences(string, toSearch, &numberOfOccurences, occurencesArr);
+    int memberNamePos = occurencesArr[0];
+    strcpy(toSearch, "\"messages\":");
+    occurences(string, toSearch, &numberOfOccurences, occurencesArr);
+    int messagesPos = occurencesArr[0];
+    if (memberNamePos < messagesPos) {
+        return 1;
+    }
+    return 0;
+}
+
+int channelExistsInJSON_cJSON(char *channelName, cJSON *root) {
     cJSON *channels = cJSON_GetObjectItemCaseSensitive(root, "channels");
     cJSON *channelJSON = NULL;
     cJSON_ArrayForEach(channelJSON, channels) {
@@ -163,7 +263,25 @@ int channelExitsInJSON(char *channelName, cJSON *root) {
     return 0;
 }
 
-int userExitsInJSON(char *user, cJSON *root) {
+int channelExistsInJSON(char *channelName, char *root) {
+    char string[MAX] = {};
+    strcpy(string, root);
+    char toSearch[200] = {};
+    strcpy(toSearch, "\"name\":\t\"");
+    strcat(toSearch, channelName);
+    strcat(toSearch, "\",");
+    int numberOfOccurences = -1;
+    int occurencesArr[1000] = {};
+    occurences(string, toSearch, &numberOfOccurences, occurencesArr);
+    if (numberOfOccurences < 1) {
+        return 0;
+    }
+    return 1;
+}
+
+
+
+int userExistsInJSON_cJSON(char *user, cJSON *root) {
     cJSON *users = cJSON_GetObjectItemCaseSensitive(root, "users");
     cJSON *userJSON = NULL;
     cJSON_ArrayForEach(userJSON, users) {
@@ -176,6 +294,21 @@ int userExitsInJSON(char *user, cJSON *root) {
     }
     return 0;
 }
+
+int userExistsInJSON(char *user, char *root) {
+    char toSearch[200] = {};
+    strcpy(toSearch, "\"username\":\t\"");
+    strcat(toSearch, user);
+    strcat(toSearch, "\",");
+    int numberOfOccurences = -1;
+    int occurencesArr[1000] = {};
+    occurences(root, toSearch, &numberOfOccurences, occurencesArr);
+    if (numberOfOccurences < 1) {
+        return 0;
+    }
+    return 1;
+}
+
 
 int userIDHavingGivenToken(char *token) { // returns -1 if nothing found, index of user in allUsers if found
     for (int i = 0; i < currentAllUsersIndex; i++) {
@@ -198,11 +331,11 @@ void doLogin(char *username, char *password, char *result) {
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Username is not valid.\"}");
         return;
     }
-    if (!userExitsInJSON(username, root)) {
+    if (!userExistsInJSON(username, data)) {
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Username is not valid.\"}");
         return;
     }
-    if (!userHasGivenPasswordInJSON(username, password, root)) {
+    if (!userHasGivenPasswordInJSON(username, password, data)) {
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Wrong password.\"}");
         return;
     }
@@ -246,7 +379,7 @@ void doRegister(char *username, char *password, char *result) {
         strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
         return;
     }
-    if (!userExitsInJSON(username, root)) {
+    if (!userExistsInJSON(username, data)) {
         cJSON *users = cJSON_GetObjectItemCaseSensitive(root, "users");
         cJSON *obj = cJSON_CreateObject();
         cJSON_AddStringToObject(obj, "username", username);
@@ -317,7 +450,7 @@ void doCreateChannel(char *channelName, char *token, char *result) {
         strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
         return;
     }
-    if (channelExitsInJSON(channelName, root)) {
+    if (channelExistsInJSON(channelName, data)) {
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Channel name is not available.\"}");
         return;
     }
@@ -422,7 +555,7 @@ void doJoinChannel(char *channelName, char *token, char *result) {
     cJSON_ArrayForEach(channel, channels) {
         cJSON *name = cJSON_GetObjectItemCaseSensitive(channel, "name");
         if (name->valuestring && (strcmp(name->valuestring, channelName) == 0)) {
-            if (!memberExistsInJSON(allUsers[id].username, channel, 1)) {
+            if (!memberExistsInJSON(allUsers[id].username, channelName, data, 1)) {
                 cJSON *members = cJSON_GetObjectItemCaseSensitive(channel, "members");
 //                cJSON *member = cJSON_CreateString(allUsers[id].username);
                 cJSON *member = cJSON_CreateObject();
