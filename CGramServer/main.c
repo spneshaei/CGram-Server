@@ -411,11 +411,11 @@ void doRegister(char *username, char *password, char *result) {
     char data[100000] = {}, fileName[] = "users.txt";
     readFromFile(fileName, data);
     if (strcmp(data, "") == 0) {
-        strcat(data, "{\"users\": [{ \"username\": \"");
+        strcat(data, "{\n\t\"users\":\t[{\n\t\t\t\"username\":\t\"");
         strcat(data, username);
-        strcat(data, "\", \"password\": \"");
+        strcat(data, "\",\n\t\t\t\"password\":\t\"");
         strcat(data, password);
-        strcat(data, "\"}]}");
+        strcat(data, "\"\n\t\t}]\n}");
         writeToFile(fileName, data);
         strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
         return;
@@ -469,11 +469,11 @@ void doCreateChannel(char *channelName, char *token, char *result) {
     readFromFile(fileName, data);
     int id = userIDHavingGivenToken(token);
     if (strcmp(data, "") == 0) {
-        strcat(data, "{\"channels\": [{ \"name\": \"");
+        strcat(data, "{\n\t\"channels\":\t[{\n\t\t\t\"name\":\t\"");
         strcat(data, channelName);
-        strcat(data, "\", \"members\": [{\"name\":\"");
+        strcat(data, "\",\n\t\t\t\"members\":\t[{\n\t\t\t\t\t\"name\":\t\"");
         strcat(data, allUsers[id].username);
-        strcat(data, "\", \"hasSeen\": 0}], \"messages\": []}]}");
+        strcat(data, "\",\n\t\t\t\t\t\"hasSeen\":\t0\n\t\t\t\t}],\n\t\t\t\"messages\":\t[]\n\t\t}]\n}");
         if (id == -1) {
             // TODO: Error message wrong
             strcpy(result, "{\"type\":\"Error\",\"content\":\"Channel name is not available.\"}");
@@ -524,6 +524,7 @@ void doCreateChannel(char *channelName, char *token, char *result) {
 //        return;
 //    }
     
+    strcpy(allUsers[id].currentChannel, channelName);
     char x[500] = {};
     strcpy(x, "{\n\t\t\t\"name\":\t\"");
     strcat(x, channelName);
@@ -640,12 +641,15 @@ void doJoinChannel(char *channelName, char *token, char *result) {
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Channel not found.\"}");
         return;
     }
+    strcpy(allUsers[id].currentChannel, channelName);
     unsigned long firstPos = occurencesArr[0] + strlen(stringToSearchFor);
     char stringToInsert[500];
     strcpy(stringToInsert, "{\n\t\t\t\t\t\"name\":\t\"");
     strcat(stringToInsert, allUsers[id].username);
     strcat(stringToInsert, "\",\n\t\t\t\t\t\"hasSeen\":\t0\n\t\t\t\t},");
     insertString(data, (int)firstPos, stringToInsert);
+    
+    strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
     
     
 //    cJSON *root = cJSON_Parse(data);
@@ -788,7 +792,7 @@ void doRefresh(char *token, char *result) {
     }
     
     char stringToBeInserted[MAX] = {};
-    findSubstring(stringToBeInserted, data, outputOfStageTwo + 12, outputOfStageThree - outputOfStageTwo + 1);
+    findSubstring(stringToBeInserted, data, outputOfStageTwo + 12, outputOfStageThree - (outputOfStageTwo + 12) + 1);
     replaceWord(stringToBeInserted, "\n", "");
     strcpy(result, "{\"type\":\"List\",\"content\":");
     strcat(result, stringToBeInserted);
