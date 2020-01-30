@@ -36,6 +36,58 @@ int currentAllUsersIndex = 0;
 
 char asciiArt[5][200];
 
+char *replaceWord(const char *s, const char *oldW,
+                  const char *newW)
+{
+    char *result;
+    int i, cnt = 0;
+    int newWlen = strlen(newW);
+    int oldWlen = strlen(oldW);
+    
+    // Counting the number of times old word
+    // occur in the string
+    for (i = 0; s[i] != '\0'; i++)
+    {
+        if (strstr(&s[i], oldW) == &s[i])
+        {
+            cnt++;
+            
+            // Jumping to index after the old word.
+            i += oldWlen - 1;
+        }
+    }
+    
+    // Making new string of enough length
+    result = (char *)malloc(i + cnt * (newWlen - oldWlen) + 1);
+    
+    i = 0;
+    while (*s)
+    {
+        // compare the substring with the result
+        if (strstr(s, oldW) == s)
+        {
+            strcpy(&result[i], newW);
+            i += newWlen;
+            s += oldWlen;
+        }
+        else
+            result[i++] = *s++;
+    }
+    
+    result[i] = '\0';
+    return result;
+}
+
+void insertString(char* destination, int pos, char* stringToInsert) {
+    char* strC = (char*)malloc(strlen(destination) + strlen(stringToInsert) + 1);
+    strncpy(strC,destination,pos);
+    strC[pos] = '\0';
+    strcat(strC, stringToInsert);
+    strcat(strC, destination + pos);
+    strcpy(destination, strC);
+    free(strC);
+}
+
 void occurences(char *str, char *toSearch, int *numberOfOccurences, int occurencesArr[500]) {
     *numberOfOccurences = 0;
     unsigned long stringLen = strlen(str), searchLen = strlen(toSearch);
@@ -326,11 +378,11 @@ void doLogin(char *username, char *password, char *result) {
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Username is not valid.\"}");
         return;
     }
-    cJSON *root = cJSON_Parse(data);
-    if (root == NULL) {
-        strcpy(result, "{\"type\":\"Error\",\"content\":\"Username is not valid.\"}");
-        return;
-    }
+//    cJSON *root = cJSON_Parse(data);
+//    if (root == NULL) {
+//        strcpy(result, "{\"type\":\"Error\",\"content\":\"Username is not valid.\"}");
+//        return;
+//    }
     if (!userExistsInJSON(username, data)) {
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Username is not valid.\"}");
         return;
@@ -368,24 +420,32 @@ void doRegister(char *username, char *password, char *result) {
         strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
         return;
     }
-    cJSON *root = cJSON_Parse(data);
-    if (root == NULL) {
-        strcat(data, "{\"users\": [{ \"username\": \"");
-        strcat(data, username);
-        strcat(data, "\", \"password\": \"");
-        strcat(data, password);
-        strcat(data, "\"}]}");
-        writeToFile(fileName, data);
-        strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
-        return;
-    }
+//    cJSON *root = cJSON_Parse(data);
+//    if (root == NULL) {
+//        strcat(data, "{\"users\": [{ \"username\": \"");
+//        strcat(data, username);
+//        strcat(data, "\", \"password\": \"");
+//        strcat(data, password);
+//        strcat(data, "\"}]}");
+//        writeToFile(fileName, data);
+//        strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
+//        return;
+//    }
     if (!userExistsInJSON(username, data)) {
-        cJSON *users = cJSON_GetObjectItemCaseSensitive(root, "users");
-        cJSON *obj = cJSON_CreateObject();
-        cJSON_AddStringToObject(obj, "username", username);
-        cJSON_AddStringToObject(obj, "password", password);
-        cJSON_AddItemToArray(users, obj);
-        strcpy(data, cJSON_Print(root));
+        // add in 13
+        char x[500] = {};
+        strcpy(x, "{\n\t\t\t\"username\":\t\"");
+        strcat(x, username);
+        strcat(x, "\",\n\t\t\t\"password\":\t\"");
+        strcat(x, password);
+        strcat(x, "\"\n\t\t}, ");
+        insertString(data, 13, x);
+//        cJSON *users = cJSON_GetObjectItemCaseSensitive(root, "users");
+//        cJSON *obj = cJSON_CreateObject();
+//        cJSON_AddStringToObject(obj, "username", username);
+//        cJSON_AddStringToObject(obj, "password", password);
+//        cJSON_AddItemToArray(users, obj);
+//        strcpy(data, cJSON_Print(root));
         writeToFile(fileName, data);
         strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
     } else {
@@ -428,28 +488,28 @@ void doCreateChannel(char *channelName, char *token, char *result) {
         strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
         return;
     }
-    printf("DATA::: %s\n", data);
-    cJSON *root = cJSON_Parse(data);
-    if (root == NULL) {
-        strcat(data, "{\"channels\": [{ \"name\": \"");
-        strcat(data, channelName);
-        strcat(data, "\", \"members\": [{\"name\":\"");
-        strcat(data, allUsers[id].username);
-        strcat(data, "\", \"hasSeen\": 0}], \"messages\": []}]}");
-        if (id == -1) {
-            // TODO: Error message wrong
-            strcpy(result, "{\"type\":\"Error\",\"content\":\"Channel name is not available.\"}");
-            return;
-        }
-//        if (strcmp(allUsers[id].currentChannel, "") != 0) {
-//            strcpy(result, "{\"type\":\"Error\",\"content\":\"You are in another channel.\"}");
+//    printf("DATA::: %s\n", data);
+////    cJSON *root = cJSON_Parse(data);
+//    if (root == NULL) {
+//        strcat(data, "{\"channels\": [{ \"name\": \"");
+//        strcat(data, channelName);
+//        strcat(data, "\", \"members\": [{\"name\":\"");
+//        strcat(data, allUsers[id].username);
+//        strcat(data, "\", \"hasSeen\": 0}], \"messages\": []}]}");
+//        if (id == -1) {
+//            // TODO: Error message wrong
+//            strcpy(result, "{\"type\":\"Error\",\"content\":\"Channel name is not available.\"}");
 //            return;
 //        }
-        strcpy(allUsers[id].currentChannel, channelName);
-        writeToFile(fileName, data);
-        strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
-        return;
-    }
+////        if (strcmp(allUsers[id].currentChannel, "") != 0) {
+////            strcpy(result, "{\"type\":\"Error\",\"content\":\"You are in another channel.\"}");
+////            return;
+////        }
+//        strcpy(allUsers[id].currentChannel, channelName);
+//        writeToFile(fileName, data);
+//        strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
+//        return;
+//    }
     if (channelExistsInJSON(channelName, data)) {
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Channel name is not available.\"}");
         return;
@@ -463,21 +523,33 @@ void doCreateChannel(char *channelName, char *token, char *result) {
 //        strcpy(result, "{\"type\":\"Error\",\"content\":\"You are in another channel.\"}");
 //        return;
 //    }
-    strcpy(allUsers[id].currentChannel, channelName);
-    cJSON *channels = cJSON_GetObjectItemCaseSensitive(root, "channels");
-    cJSON *channel = cJSON_CreateObject();
-    cJSON *members = cJSON_CreateArray();
-    cJSON *member = cJSON_CreateObject();
-    cJSON_AddStringToObject(member, "name", allUsers[id].username);
-    cJSON_AddNumberToObject(member, "hasSeen", 0);
-    cJSON *messages = cJSON_CreateArray();
-    cJSON *name = cJSON_CreateString(channelName);
-    cJSON_AddItemToArray(members, member);
-    cJSON_AddItemToObject(channel, "name", name);
-    cJSON_AddItemToObject(channel, "members", members);
-    cJSON_AddItemToObject(channel, "messages", messages);
-    cJSON_AddItemToArray(channels, channel);
-    strcpy(data, cJSON_Print(root));
+    
+    char x[500] = {};
+    strcpy(x, "{\n\t\t\t\"name\":\t\"");
+    strcat(x, channelName);
+    strcat(x, "\",\n\t\t\t\"members\":\t[");
+    strcat(x, "{\n\t\t\t\t\t\"name\":\t\"");
+    strcat(x, allUsers[id].username);
+    strcat(x, "\",\n\t\t\t\t\t\"hasSeen\":\t-1");
+    strcat(x, "\n\t\t\t\t}],\n\t\t\t\"messages\":\t[]\n\t\t}, ");
+    insertString(data, 16, x);
+    
+    
+//    strcpy(allUsers[id].currentChannel, channelName);
+//    cJSON *channels = cJSON_GetObjectItemCaseSensitive(root, "channels");
+//    cJSON *channel = cJSON_CreateObject();
+//    cJSON *members = cJSON_CreateArray();
+//    cJSON *member = cJSON_CreateObject();
+//    cJSON_AddStringToObject(member, "name", allUsers[id].username);
+//    cJSON_AddNumberToObject(member, "hasSeen", 0);
+//    cJSON *messages = cJSON_CreateArray();
+//    cJSON *name = cJSON_CreateString(channelName);
+//    cJSON_AddItemToArray(members, member);
+//    cJSON_AddItemToObject(channel, "name", name);
+//    cJSON_AddItemToObject(channel, "members", members);
+//    cJSON_AddItemToObject(channel, "messages", messages);
+//    cJSON_AddItemToArray(channels, channel);
+//    strcpy(data, cJSON_Print(root));
     writeToFile(fileName, data);
     strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
 }
@@ -495,39 +567,52 @@ void doLeave(char *token, char *result) {
 //    }
     char data[MAX] = {}, fileName[] = "channels.txt";
     readFromFile(fileName, data);
-    cJSON *root = cJSON_Parse(data);
-    if (root == NULL) {
-        // TODO: Error message wrong
-        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
-        return;
-    }
+//    cJSON *root = cJSON_Parse(data);
+//    if (root == NULL) {
+//        // TODO: Error message wrong
+//        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+//        return;
+//    }
     char channelName[1000] = {};
     strcpy(channelName, allUsers[id].currentChannel);
-    cJSON *channels = cJSON_GetObjectItemCaseSensitive(root, "channels");
-    cJSON *channel = NULL;
-    cJSON_ArrayForEach(channel, channels) {
-        cJSON *name = cJSON_GetObjectItemCaseSensitive(channel, "name");
-        if (name->valuestring && (strcmp(name->valuestring, channelName) == 0)) {
-            cJSON *members = cJSON_GetObjectItemCaseSensitive(channel, "members");
-            cJSON *memberr = NULL;
-            cJSON_ArrayForEach(memberr, members) {
-                cJSON *member = cJSON_GetObjectItemCaseSensitive(memberr, "name");
-                if (!member) continue;
-                if (member->valuestring && strcmp(member->valuestring, allUsers[id].username) == 0) {
-                    cJSON *hasSeen = cJSON_GetObjectItemCaseSensitive(memberr, "hasSeen");
-                    cJSON_SetIntValue(hasSeen, -1);
-                    strcpy(data, cJSON_Print(root));
-                    writeToFile(fileName, data);
-                    strcpy(allUsers[id].currentChannel, "");
-                    strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
-                    return;
-                }
-            }
-            break;
-        }
-    }
+    char mainString[500] = {};
+    strcat(mainString, "\"name\":\t\"");
+    strcat(mainString, allUsers[id].username);
+    strcat(mainString, "\",\n\t\t\t\t\t\"hasSeen\":\t0");
+    char newString[500] = {};
+    strcat(newString, "\"name\":\t\"");
+    strcat(newString, allUsers[id].username);
+    strcat(newString, "\",\n\t\t\t\t\t\"hasSeen\":\t-1");
+    replaceWord(data, mainString, newString);
+    writeToFile(fileName, data);
+    strcpy(allUsers[id].currentChannel, "");
+    strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
+    
+//    cJSON *channels = cJSON_GetObjectItemCaseSensitive(root, "channels");
+//    cJSON *channel = NULL;
+//    cJSON_ArrayForEach(channel, channels) {
+//        cJSON *name = cJSON_GetObjectItemCaseSensitive(channel, "name");
+//        if (name->valuestring && (strcmp(name->valuestring, channelName) == 0)) {
+//            cJSON *members = cJSON_GetObjectItemCaseSensitive(channel, "members");
+//            cJSON *memberr = NULL;
+//            cJSON_ArrayForEach(memberr, members) {
+//                cJSON *member = cJSON_GetObjectItemCaseSensitive(memberr, "name");
+//                if (!member) continue;
+//                if (member->valuestring && strcmp(member->valuestring, allUsers[id].username) == 0) {
+//                    cJSON *hasSeen = cJSON_GetObjectItemCaseSensitive(memberr, "hasSeen");
+//                    cJSON_SetIntValue(hasSeen, -1);
+//                    strcpy(data, cJSON_Print(root));
+//                    writeToFile(fileName, data);
+//                    strcpy(allUsers[id].currentChannel, "");
+//                    strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
+//                    return;
+//                }
+//            }
+//            break;
+//        }
+//    }
     // TODO: Error message wrong
-    strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+//    strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
 }
 
 void doJoinChannel(char *channelName, char *token, char *result) {
@@ -543,51 +628,73 @@ void doJoinChannel(char *channelName, char *token, char *result) {
 //    }
     char data[MAX] = {}, fileName[] = "channels.txt";
     readFromFile(fileName, data);
-    cJSON *root = cJSON_Parse(data);
-    if (root == NULL) {
-        // TODO: Error message wrong
-        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+    
+    char stringToSearchFor[MAX] = {};
+    strcpy(stringToSearchFor, "\"name\":\t\"");
+    strcat(stringToSearchFor, channelName);
+    strcat(stringToSearchFor, "\",\n\t\t\t\"members\":\t[");
+    int numberOfOccurences = -1;
+    int occurencesArr[100] = {};
+    occurences(data, stringToSearchFor, &numberOfOccurences, occurencesArr);
+    if (numberOfOccurences < 1) {
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Channel not found.\"}");
         return;
     }
-    strcpy(allUsers[id].currentChannel, channelName);
-    cJSON *channels = cJSON_GetObjectItemCaseSensitive(root, "channels");
-    cJSON *channel = NULL;
-    cJSON_ArrayForEach(channel, channels) {
-        cJSON *name = cJSON_GetObjectItemCaseSensitive(channel, "name");
-        if (name->valuestring && (strcmp(name->valuestring, channelName) == 0)) {
-            if (!memberExistsInJSON(allUsers[id].username, channelName, data, 1)) {
-                cJSON *members = cJSON_GetObjectItemCaseSensitive(channel, "members");
-//                cJSON *member = cJSON_CreateString(allUsers[id].username);
-                cJSON *member = cJSON_CreateObject();
-                cJSON_AddStringToObject(member, "name", allUsers[id].username);
-                cJSON_AddNumberToObject(member, "hasSeen", 0);
-                cJSON_AddItemToArray(members, member);
-                strcpy(allUsers[id].currentChannel, channelName);
-                strcpy(data, cJSON_Print(root));
-                writeToFile(fileName, data);
-                strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
-                return;
-            } else {
-                cJSON *members = cJSON_GetObjectItemCaseSensitive(channel, "members");
-                cJSON *member = NULL;
-                cJSON_ArrayForEach(member, members) {
-                    cJSON *memberName = cJSON_GetObjectItemCaseSensitive(member, "name");
-                    if (memberName && cJSON_IsString(memberName) && (strcmp(memberName->valuestring, allUsers[id].username) == 0)) {
-                        cJSON *memberHasSeen = cJSON_GetObjectItemCaseSensitive(member, "hasSeen");
-                        if (memberHasSeen) {
-                            cJSON_SetIntValue(memberHasSeen, 0);
-                            strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
-                            return;
-                        }
-                    }
-                }
-            }
-            strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
-            return;
-        }
-    }
-    strcpy(result, "{\"type\":\"Error\",\"content\":\"Channel not found.\"}");
+    unsigned long firstPos = occurencesArr[0] + strlen(stringToSearchFor);
+    char stringToInsert[500];
+    strcpy(stringToInsert, "{\n\t\t\t\t\t\"name\":\t\"");
+    strcat(stringToInsert, allUsers[id].username);
+    strcat(stringToInsert, "\",\n\t\t\t\t\t\"hasSeen\":\t0\n\t\t\t\t},");
+    insertString(data, (int)firstPos, stringToInsert);
+    
+    
+//    cJSON *root = cJSON_Parse(data);
+//    if (root == NULL) {
+//        // TODO: Error message wrong
+//        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+//        return;
+//    }
+//    strcpy(allUsers[id].currentChannel, channelName);
+//    cJSON *channels = cJSON_GetObjectItemCaseSensitive(root, "channels");
+//    cJSON *channel = NULL;
+//    cJSON_ArrayForEach(channel, channels) {
+//        cJSON *name = cJSON_GetObjectItemCaseSensitive(channel, "name");
+//        if (name->valuestring && (strcmp(name->valuestring, channelName) == 0)) {
+//            if (!memberExistsInJSON(allUsers[id].username, channelName, data, 1)) {
+//                cJSON *members = cJSON_GetObjectItemCaseSensitive(channel, "members");
+////                cJSON *member = cJSON_CreateString(allUsers[id].username);
+//                cJSON *member = cJSON_CreateObject();
+//                cJSON_AddStringToObject(member, "name", allUsers[id].username);
+//                cJSON_AddNumberToObject(member, "hasSeen", 0);
+//                cJSON_AddItemToArray(members, member);
+//                strcpy(allUsers[id].currentChannel, channelName);
+//                strcpy(data, cJSON_Print(root));
+//                writeToFile(fileName, data);
+//                strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
+//                return;
+//            } else {
+//                cJSON *members = cJSON_GetObjectItemCaseSensitive(channel, "members");
+//                cJSON *member = NULL;
+//                cJSON_ArrayForEach(member, members) {
+//                    cJSON *memberName = cJSON_GetObjectItemCaseSensitive(member, "name");
+//                    if (memberName && cJSON_IsString(memberName) && (strcmp(memberName->valuestring, allUsers[id].username) == 0)) {
+//                        cJSON *memberHasSeen = cJSON_GetObjectItemCaseSensitive(member, "hasSeen");
+//                        if (memberHasSeen) {
+//                            cJSON_SetIntValue(memberHasSeen, 0);
+//                            strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
+//                            return;
+//                        }
+//                    }
+//                }
+//            }
+//            strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
+//            return;
+//        }
+//    }
+//    strcpy(result, "{\"type\":\"Error\",\"content\":\"Channel not found.\"}");
 }
+
+
 
 int hasSeenOfMemberGiven(char *theMemberName, cJSON *members) {
     cJSON *member = NULL;
@@ -625,6 +732,70 @@ void setHasSeenOfMemberGiven(int num, char *theMemberName, cJSON *members) {
 int tMC = 0;
 
 void doRefresh(char *token, char *result) {
+    int id = userIDHavingGivenToken(token);
+    if (id == -1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    //    if (strcmp(allUsers[id].currentChannel, "") == 0) {
+    //        strcpy(result, "{\"type\":\"Error\",\"content\":\"You aren\'t in any channel\"}");
+    //        return;
+    //    }
+    char data[MAX] = {}, fileName[] = "channels.txt";
+    readFromFile(fileName, data);
+    
+    int numberOfOccurences = -1;
+    int occurencesArr[500] = {};
+    char toSearch[200] = {};
+    strcpy(toSearch, "\"name\":\t\"");
+    strcat(toSearch, allUsers[id].currentChannel);
+    strcat(toSearch, "\",");
+    occurences(data, toSearch, &numberOfOccurences, occurencesArr);
+    if (numberOfOccurences < 1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    int outputOfStageOne = occurencesArr[0];
+    strcpy(toSearch, "\"messages\"");
+    occurences(data, toSearch, &numberOfOccurences, occurencesArr);
+    if (numberOfOccurences < 1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    int outputOfStageTwo = -1;
+    for (int i = 0; i < numberOfOccurences; i++) {
+        if (occurencesArr[i] > outputOfStageOne) {
+            outputOfStageTwo = occurencesArr[i];
+            break;
+        }
+    }
+    if (outputOfStageTwo == -1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    strcpy(toSearch, "]");
+    occurences(data, toSearch, &numberOfOccurences, occurencesArr);
+    int outputOfStageThree = -1;
+    for (int i = 0; i < numberOfOccurences; i++) {
+        if (occurencesArr[i] > outputOfStageTwo) {
+            outputOfStageThree = occurencesArr[i];
+            break;
+        }
+    }
+    
+    char stringToBeInserted[MAX] = {};
+    findSubstring(stringToBeInserted, data, outputOfStageTwo + 12, outputOfStageThree - outputOfStageTwo + 1);
+    replaceWord(stringToBeInserted, "\n", "");
+    strcpy(result, "{\"type\":\"List\",\"content\":");
+    strcat(result, stringToBeInserted);
+    strcat(result, "}");
+}
+
+void doRefresh_cJSON(char *token, char *result) {
     int id = userIDHavingGivenToken(token);
     if (id == -1) {
         // TODO: Error message wrong
@@ -694,18 +865,19 @@ void doRefresh(char *token, char *result) {
     strcpy(result, "{\"type\":\"Error\",\"content\":\"Channel not found.\"}");
 }
 
-void doSend(char *originalMessage, char *token, char *result) {
+
+void doSend_cJSON(char *originalMessage, char *token, char *result) {
     int id = userIDHavingGivenToken(token);
     if (id == -1) {
         // TODO: Error message wrong
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
         return;
     }
-//    if (strcmp(allUsers[id].currentChannel, "") == 0) {
-//        // TODO: Study \' or ' (also using replace and find in other places...)
-//        strcpy(result, "{\"type\":\"Error\",\"content\":\"You aren\'t in any channel\"}");
-//        return;
-//    }
+    //    if (strcmp(allUsers[id].currentChannel, "") == 0) {
+    //        // TODO: Study \' or ' (also using replace and find in other places...)
+    //        strcpy(result, "{\"type\":\"Error\",\"content\":\"You aren\'t in any channel\"}");
+    //        return;
+    //    }
     char data[MAX] = {}, fileName[] = "channels.txt";
     readFromFile(fileName, data);
     cJSON *root = cJSON_Parse(data);
@@ -738,7 +910,189 @@ void doSend(char *originalMessage, char *token, char *result) {
     strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
 }
 
+void doSend(char *originalMessage, char *token, char *result) {
+    int id = userIDHavingGivenToken(token);
+    if (id == -1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    //    if (strcmp(allUsers[id].currentChannel, "") == 0) {
+    //        // TODO: Study \' or ' (also using replace and find in other places...)
+    //        strcpy(result, "{\"type\":\"Error\",\"content\":\"You aren\'t in any channel\"}");
+    //        return;
+    //    }
+    char data[MAX] = {}, fileName[] = "channels.txt";
+    readFromFile(fileName, data);
+    
+    int numberOfOccurences = -1;
+    int occurencesArr[500] = {};
+    char toSearch[200] = {};
+    strcpy(toSearch, "\"name\":\t\"");
+    strcat(toSearch, allUsers[id].currentChannel);
+    strcat(toSearch, "\",");
+    occurences(data, toSearch, &numberOfOccurences, occurencesArr);
+    if (numberOfOccurences < 1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    int outputOfStageOne = occurencesArr[0];
+    strcpy(toSearch, "\"messages\"");
+    occurences(data, toSearch, &numberOfOccurences, occurencesArr);
+    if (numberOfOccurences < 1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    int outputOfStageTwo = -1;
+    for (int i = 0; i < numberOfOccurences; i++) {
+        if (occurencesArr[i] > outputOfStageOne) {
+            outputOfStageTwo = occurencesArr[i];
+            break;
+        }
+    }
+    if (outputOfStageTwo == -1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    strcpy(toSearch, "]");
+    occurences(data, toSearch, &numberOfOccurences, occurencesArr);
+    int outputOfStageThree = -1;
+    for (int i = 0; i < numberOfOccurences; i++) {
+        if (occurencesArr[i] > outputOfStageTwo) {
+            outputOfStageThree = occurencesArr[i];
+            break;
+        }
+    }
+    
+    if (outputOfStageThree - outputOfStageTwo <= 15) {
+        char newMessage[500] = {};
+        strcpy(newMessage, "{\n\t\t\t\t\t\"sender\":\t\"");
+        strcat(newMessage, allUsers[id].username);
+        strcat(newMessage, "\",\n\t\t\t\t\t\"content\":\t\"");
+        strcat(newMessage, originalMessage);
+        strcat(newMessage, "\"\n\t\t\t\t}");
+        insertString(data, outputOfStageThree, newMessage);
+    } else {
+        char newMessage[500] = {};
+        strcpy(newMessage, ",{\n\t\t\t\t\t\"sender\":\t\"");
+        strcat(newMessage, allUsers[id].username);
+        strcat(newMessage, "\",\n\t\t\t\t\t\"content\":\t\"");
+        strcat(newMessage, originalMessage);
+        strcat(newMessage, "\"\n\t\t\t\t}");
+        insertString(data, outputOfStageThree, newMessage);
+    }
+    writeToFile(fileName, data);
+    strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
+}
+
+
 void doChannelMembers(char *token, char *result) {
+    int id = userIDHavingGivenToken(token);
+    if (id == -1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    //    if (strcmp(allUsers[id].currentChannel, "") == 0) {
+    //        strcpy(result, "{\"type\":\"Error\",\"content\":\"You aren\'t in any channel\"}");
+    //        return;
+    //    }
+    char data[MAX] = {}, fileName[] = "channels.txt";
+    readFromFile(fileName, data);
+    char toSearch[500] = {};
+    strcpy(toSearch, "\"name\":\t\"");
+    strcat(toSearch, allUsers[id].currentChannel);
+    strcat(token, "\"");
+    int numberOfOccurences = -1;
+    int occurencesArr[500] = {};
+    occurences(data, toSearch, &numberOfOccurences, occurencesArr);
+    if (numberOfOccurences < 1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    int fPO = occurencesArr[0];
+    strcpy(toSearch, "\"members\"");
+    occurences(data, toSearch, &numberOfOccurences, occurencesArr);
+    if (numberOfOccurences < 1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    int x = -1;
+    for (int i = 0; i < numberOfOccurences; i++) {
+        if (occurencesArr[i] > fPO) {
+            x = occurencesArr[i];
+            break;
+        }
+    }
+    if (x < 1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    
+    strcpy(toSearch, "]");
+    occurences(data, toSearch, &numberOfOccurences, occurencesArr);
+    if (numberOfOccurences < 1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    int y = -1;
+    for (int i = 0; i < numberOfOccurences; i++) {
+        if (occurencesArr[i] > x) {
+            y = occurencesArr[i];
+            break;
+        }
+    }
+    if (y < 1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    
+    char a[500] = {};
+    findSubstring(a, data, x, (y - x) + 1);
+    strcpy(toSearch, "\"name\":\t");
+    occurences(a, toSearch, &numberOfOccurences, occurencesArr);
+    int hasSeenOccurencesArr[500] = {};
+    strcpy(toSearch, "\"hasSeen\":\t");
+    occurences(a, toSearch, &numberOfOccurences, hasSeenOccurencesArr);
+    char members[500][100];
+    int countOfMembers = 0;
+    for (int i = 0; i < numberOfOccurences; i++) {
+        if (a[hasSeenOccurencesArr[i] + 12] != '-') {
+            char name[100] = {};
+            int c = 0;
+            while (1) {
+                if (a[occurencesArr[i] + 9 + c] == '\"' || a[occurencesArr[i] + 9 + c] == '\0') {
+                    break;
+                }
+                name[c] = a[occurencesArr[i] + 9 + c];
+                c++;
+            }
+            strcpy(members[i], name);
+            countOfMembers++;
+        }
+    }
+    
+    strcpy(result, "{\"type\":\"List\",\"content\":[");
+    for (int i = 0; i < countOfMembers; i++) {
+        if (i != 0) {
+            strcat(result, ", ");
+        }
+        strcat(result, "\"");
+        strcat(result, members[i]);
+        strcat(result, "\"");
+    }
+    strcat(result, "]}");
+}
+
+void doChannelMembers_cJSON(char *token, char *result) {
     int id = userIDHavingGivenToken(token);
     if (id == -1) {
         // TODO: Error message wrong
