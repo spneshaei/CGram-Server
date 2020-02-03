@@ -17,7 +17,7 @@
 #include <netinet/ip.h>
 #include <time.h>
 #include "cJSON.h"
-#define MAX 1000000
+#define MAX 10000
 #define PORT 12345
 #define SA struct sockaddr
 
