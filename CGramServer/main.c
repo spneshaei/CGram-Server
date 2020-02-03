@@ -37,8 +37,7 @@ int currentAllUsersIndex = 0;
 char asciiArt[5][200];
 
 char *replaceWord(const char *s, const char *oldW,
-                  const char *newW)
-{
+                  const char *newW) {
     char *result;
     int i, cnt = 0;
     int newWlen = strlen(newW);
@@ -89,6 +88,9 @@ void insertString(char* destination, int pos, char* stringToInsert) {
 }
 
 void occurences(char *str, char *toSearch, int *numberOfOccurences, int occurencesArr[500]) {
+    if (strlen(str) < strlen(toSearch)) {
+        return;
+    }
     *numberOfOccurences = 0;
     unsigned long stringLen = strlen(str), searchLen = strlen(toSearch);
     for (int i = 0; i <= stringLen - searchLen; i++) {
@@ -110,6 +112,21 @@ void splitStringWithoutSpace(char str[1000000], char newString[1000][1000], int 
     int j = 0, count = 0;
     for(int i = 0; i <= strlen(str); i++) {
         if (str[i] == '\0' || str[i] == ',' || str[i] == '\n') {
+            newString[count][j] = '\0';
+            count += 1;
+            j = 0;
+        } else {
+            newString[count][j] = str[i];
+            j++;
+        }
+    }
+    *countOfWords = count;
+}
+
+void splitStringByDoubleQuotes(char str[1000000], char newString[1000][1000], int *countOfWords) {
+    int j = 0, count = 0;
+    for(int i = 0; i <= strlen(str); i++) {
+        if (str[i] == '\0' || str[i] == '\"' || str[i] == '\n') {
             newString[count][j] = '\0';
             count += 1;
             j = 0;
@@ -190,6 +207,37 @@ void findSubstring(char *destination, const char *source, int beg, int n)
     
     // null terminate destination string
     *destination = '\0';
+}
+
+int stringContainsWord(char *string, char *word) {
+    int c = -1;
+    char newString[1000][1000] = {};
+    splitString(string, newString, &c);
+    if (c < 0) {
+        return 0;
+    }
+    for (int i = 0; i < c; i++) {
+        if (strcmp(newString[i], word) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int numberOfOccurencesOfWordInString(char *word, char *string) {
+    int c = -1;
+    int result = 0;
+    char newString[1000][1000] = {};
+    splitString(string, newString, &c);
+    if (c < 0) {
+        return 0;
+    }
+    for (int i = 0; i < c; i++) {
+        if (strcmp(newString[i], word) == 0) {
+            result += 1;
+        }
+    }
+    return result;
 }
 
 void badRequest(char *result) {
@@ -291,14 +339,31 @@ int memberExistsInJSON(char *theMemberName, char *channelName, char *root, int s
     strcpy(toSearch, "\"name\":\t\"");
     strcat(toSearch, theMemberName);
     occurences(string, toSearch, &numberOfOccurences, occurencesArr);
+    if (numberOfOccurences < 1) {
+        return 0;
+    }
     int memberNamePos = occurencesArr[0];
+    strcpy(toSearch, "\"hasSeen\": -1");
+    occurences(string, toSearch, &numberOfOccurences, occurencesArr);
+    int hasSeenMinus = occurencesArr[0];
     strcpy(toSearch, "\"messages\":");
     occurences(string, toSearch, &numberOfOccurences, occurencesArr);
     int messagesPos = occurencesArr[0];
-    if (memberNamePos < messagesPos) {
-        return 1;
+    if (shouldCountMinusOnes) {
+        if (memberNamePos < messagesPos) {
+            return 1;
+        } else {
+            return 0;
+        }
+    } else {
+        if (memberNamePos < hasSeenMinus && hasSeenMinus < messagesPos) {
+            return 0;
+        } else if (memberNamePos < messagesPos) {
+            return 1;
+        } else {
+            return 0;
+        }
     }
-    return 0;
 }
 
 int channelExistsInJSON_cJSON(char *channelName, cJSON *root) {
@@ -648,6 +713,7 @@ void doJoinChannel(char *channelName, char *token, char *result) {
     strcat(stringToInsert, allUsers[id].username);
     strcat(stringToInsert, "\",\n\t\t\t\t\t\"hasSeen\":\t0\n\t\t\t\t},");
     insertString(data, (int)firstPos, stringToInsert);
+    writeToFile(fileName, data);
     
     strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
     
@@ -730,6 +796,93 @@ void setHasSeenOfMemberGiven(int num, char *theMemberName, cJSON *members) {
                 cJSON_SetIntValue(memberHasSeen, num);
             }
         }
+    }
+}
+
+void doSearchBetweenMessages(char *textToSearch, char *token, char *result) {
+    int id = userIDHavingGivenToken(token);
+    if (id == -1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    //    if (strcmp(allUsers[id].currentChannel, "") == 0) {
+    //        strcpy(result, "{\"type\":\"Error\",\"content\":\"You aren\'t in any channel\"}");
+    //        return;
+    //    }
+    char data[MAX] = {}, fileName[] = "channels.txt";
+    readFromFile(fileName, data);
+    
+    int numberOfOccurences = -1;
+    int occurencesArr[500] = {};
+    char toSearch[200] = {};
+    strcpy(toSearch, "\"name\":\t\"");
+    strcat(toSearch, allUsers[id].currentChannel);
+    strcat(toSearch, "\",");
+    occurences(data, toSearch, &numberOfOccurences, occurencesArr);
+    if (numberOfOccurences < 1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    int outputOfStageOne = occurencesArr[0];
+    strcpy(toSearch, "\"messages\"");
+    occurences(data, toSearch, &numberOfOccurences, occurencesArr);
+    if (numberOfOccurences < 1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    int outputOfStageTwo = -1;
+    for (int i = 0; i < numberOfOccurences; i++) {
+        if (occurencesArr[i] > outputOfStageOne) {
+            outputOfStageTwo = occurencesArr[i];
+            break;
+        }
+    }
+    if (outputOfStageTwo == -1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    strcpy(toSearch, "]");
+    occurences(data, toSearch, &numberOfOccurences, occurencesArr);
+    int outputOfStageThree = -1;
+    for (int i = 0; i < numberOfOccurences; i++) {
+        if (occurencesArr[i] > outputOfStageTwo) {
+            outputOfStageThree = occurencesArr[i];
+            break;
+        }
+    }
+    
+    char stringToBeInserted[MAX] = {};
+    findSubstring(stringToBeInserted, data, outputOfStageTwo + 12, outputOfStageThree - (outputOfStageTwo + 12) + 1);
+    replaceWord(stringToBeInserted, "\n", "");
+    // stringToBeInserted is the whole content that should be parsed
+    if (strlen(stringToBeInserted) < 4) {
+        strcpy(result, "{\"type\":\"List\",\"content\":[]}");
+        return;
+    }
+    char line[MAX] = {};
+    strcpy(line, stringToBeInserted);
+    strcpy(result, "{\"type\":\"List\",\"content\":[");
+    char subStringParts[1000][1000] = {};
+    int countOfWords = -1;
+    splitStringByDoubleQuotes(line, subStringParts, &countOfWords);
+    if (countOfWords < 1) {
+        // TODO: Error message wrong
+        strcat(result, "]}");
+        return;
+    }
+    for (int i = 0; i < countOfWords; i += 4) {
+        if (i != 0) {
+            strcat(result, ",");
+        }
+        strcat(result, "{\"sender\":\"");
+        strcat(result, subStringParts[i + 1]);
+        strcat(result, "\",\"content\":\"");
+        strcat(result, subStringParts[i + 3]);
+        strcat(result, "\"}");
     }
 }
 
@@ -916,7 +1069,7 @@ void doSend_cJSON(char *originalMessage, char *token, char *result) {
 
 void doSend(char *originalMessage, char *token, char *result) {
     int id = userIDHavingGivenToken(token);
-    if (id == -1) {
+    if (id == -1 || strcmp(originalMessage, "") == 0) {
         // TODO: Error message wrong
         strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
         return;
@@ -992,6 +1145,22 @@ void doSend(char *originalMessage, char *token, char *result) {
     strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
 }
 
+void doSearchBetweenMembers(char *textToSearch, char *token, char *result) {
+    int id = userIDHavingGivenToken(token);
+    if (id == -1) {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+        return;
+    }
+    char data[MAX] = {}, fileName[] = "channels.txt";
+    readFromFile(fileName, data);
+    if (memberExistsInJSON(textToSearch, allUsers[id].currentChannel, data, 0)) {
+        strcpy(result, "{\"type\":\"Successful\",\"content\":\"\"}");
+    } else {
+        // TODO: Error message wrong
+        strcpy(result, "{\"type\":\"Error\",\"content\":\"Error\"}");
+    }
+}
 
 void doChannelMembers(char *token, char *result) {
     int id = userIDHavingGivenToken(token);
@@ -1177,6 +1346,10 @@ void process(char *request) {
         doLogout(secondPart, request);
     } else if (strcmp(firstPart, "create") == 0 && strcmp(secondPart, "channel") == 0) {
         doCreateChannel(parts[2], parts[4], request);
+    } else if (strcmp(firstPart, "searchBetweenMembers") == 0) {
+        doSearchBetweenMembers(secondPart, parts[3], request);
+    } else if (strcmp(firstPart, "searchBetweenMessages") == 0) {
+        doSearchBetweenMessages(secondPart, parts[3], request);
     } else if (strcmp(firstPart, "leave") == 0) {
         doLeave(secondPart, request);
     } else if (strcmp(firstPart, "join") == 0 && strcmp(secondPart, "channel") == 0) {
